@@ -1,0 +1,41 @@
+# node_types — 알려진 분류 어휘 (선택 사항, v0.1)
+#
+# 기준: summary_arch.md §8.10 (node_type 결정 규칙, ADR-0008), §19 #23
+#
+# **이 파일은 선택 사항이다.** 없어도 v1이 동작한다.
+#   - node_type은 기본적으로 **관계에서의 위치**로 결정한다 (configs/attributes.yaml → node_type_by_position).
+#   - 이 사전이 등록되어 있으면 **사전이 관계 위치 규칙보다 우선**한다.
+#   - 사전은 영원히 불완전하다. 그래서 §7.7의 distinctiveness 검사는
+#     주어 타입에 의존하지 않는다 (v1 검사 범위 = SymbolicStore의 주어 전체).
+#
+# §7.5.1 개발자 직접 등록 경로: version bump + 회귀 green + ADR
+
+version: "0.1.0"
+status: proposed
+enabled: false          # 기본 off. 등록할 때 true로 바꾸고 §19 #23을 갱신한다.
+
+# 알려진 분류(上位類型) 라벨. 표면형 → node_type
+classes:
+  - label: "동물"
+    node_type: class
+  - label: "포유류"
+    node_type: class
+  - label: "개"
+    node_type: class
+  - label: "고양이"
+    node_type: class
+  - label: "새"
+    node_type: class
+  - label: "사람"
+    node_type: class
+
+# 알려진 속성 라벨
+attributes:
+  - label: "뾰족한 귀"
+    node_type: attribute
+  - label: "날 수 있다"
+    node_type: attribute
+
+notes: >
+  §10.2 예시에서는 "고양이"와 "개"가 class로 식별되면 판정 문장이 자연스럽지만,
+  v1은 node_type에 의존하지 않으므로 이 사전 없이도 재현된다.

@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "semantic-cognition"
+version = "0.1.0"
+description = "Hybrid symbolic/vector cognition core with deterministic reasoning, verification, and meta-structure control"
+requires-python = ">=3.10"
+
+# Phase 0에서 실측 확정 후 버전을 고정한다. (§19 #2 — 실측 전에는 "임의" 버전을 넣지 않는다)
+dependencies = [
+    # "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Phase 0 venv에서 설치하는 집합. 실제 버전은 requirements.txt에 기록한다.
+embed = [
+    # "sentence-transformers>=3.0",
+    # "torch>=2.5",
+    # "transformers>=4.45",
+]
+dev = [
+    # "pytest>=8.0",
+]
+
+# [project.scripts]
+# semantic-cognition = "semantic_cognition.runtime.cli:main"
+#
+# 유예 사유 (Phase 0 T0.2):
+#   진입점 모듈 `semantic_cognition.runtime.cli`는 Phase 9 산출물이다.
+#   지금 해제하면 `pip install -e .` 후 실행 시 ImportError가 난다.
+#   Phase 9에서 runtime/cli.py를 구현할 때 **같은 커밋에서** 위 두 줄을 해제한다.
+#   그전까지 실행 진입점은 pytest와 experiments/stageN_*/ 로 충분하다.
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers"
+markers = [
+    "unit: 단위 테스트",
+    "integration: 통합 테스트",
+    "regression: 회귀 테스트 (기준선 유지 확인)",
+    "slow: 장시간 실행 테스트",
+]
+filterwarnings = ["error::DeprecationWarning:semantic_cognition.*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests", "experiments"]

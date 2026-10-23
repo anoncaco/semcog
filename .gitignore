@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# venv (저장소 루트 신규 생성, §19 #12)
+.venv/
+venv/
+
+# 데이터 (§18.2 — 기존 결과 덮어쓰기 금지. 데이터는 커밋하지 않는다)
+data/raw/*
+data/processed/*
+data/vectors/*
+data/sqlite/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/vectors/.gitkeep
+!data/sqlite/.gitkeep
+
+# 실험 산출물: results.json은 실행 산출물이므로 커밋하지 않는다 (ADR-0009 §8.1).
+# REPORT.md는 커밋한다 (사람이 읽는 요약 + 판정 기록).
+experiments/**/results.json
+experiments/**/__pycache__/
+
+# 로컬 환경
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,100 @@
+# runtime — 런타임 파라미터 (v0.1)
+#
+# 규칙:
+#   - §19에 등록된 값은 실측 전까지 "제안값"이다. 확정하면 status를 confirmed로 바꾼다.
+#   - 값이 하드코딩되어 있으면 안 된다. 코드는 여기서 읽는다.
+
+version: "0.1.0"
+
+# ---------------------------------------------------------------- 환경
+environment:
+  venv_path: ".venv"                # §19 #12 확정 — 저장소 루트 신규 생성
+  python_requires: ">=3.10"
+  ollama_host: "http://localhost:11434"
+
+# ---------------------------------------------------------------- 청킹 (§7.1, §19 #20)
+chunking:
+  max_tokens: 512                   # 제안값 — Phase 1 실측 조정
+  overlap_tokens: 50                # 제안값 — Phase 1 실측 조정
+  tokenizer: "google/embeddinggemma-2"   # **E와 동일한 토크나이저** (임베더가 아님)
+  status: proposed                  # proposed | confirmed
+
+# ---------------------------------------------------------------- 정규화 (§8.8)
+canonicalization:
+  version: "canon_v1"
+  unicode_form: "NFC"
+  normalize_newlines: true
+  strip_whitespace: true
+  # 문장부호·대소문자·숫자 표기는 제거하지 않는다. 의미를 바꿀 수 있다.
+  strip_punctuation: false
+  strip_case: false
+  status: confirmed
+
+# ---------------------------------------------------------------- importance (§11.1)
+importance:
+  weights:
+    w_e: 0.30    # evidence_weight  (독립 근거 기준 — ADR-0003)
+    w_h: 0.20    # hypothesis_weight
+    w_v: 0.25    # verification_weight
+    w_r: 0.15    # recency_weight
+    w_f: 0.10    # frequency_weight
+  saturation_count: 3         # min(1, count / 3)
+  recency_tau_days: 7         # §19 #19 — 제안값
+  recalculate_on: [accessed, updated]   # 검색마다 재계산하지 않는다
+  status: proposed            # §19 #19 — Phase 10 이후 실측 재검토
+
+# ---------------------------------------------------------------- 인지 루프 (§10.3, §19 #21)
+cognition:
+  max_steps: 10                # 제안값 — Phase 8 실측 조정
+  cycle_threshold_n: 3         # §19 #21 — 제안값, Phase 8에서 확정
+  stagnation_threshold: 3      # 근거 정체 카운터 — 제안값
+  status: proposed
+
+# ---------------------------------------------------------------- 검색 (§7.6, §11.4)
+retrieval:
+  default_top_k: 8
+  deduplicate_on: [context_id, "content_hash+source_id"]
+  preserve_counter_evidence: true   # 반대 방향 근거를 검색에서 제거하지 않는다
+  filters: [importance, recency, modality, epistemic_status, source_kind]
+  status: proposed
+
+# ---------------------------------------------------------------- 메모리 계층 (§11.2, §19 #7)
+tiers:
+  hot:
+    medium: ram
+    criteria: {importance_gte: 0.7, accessed_within_days: 1}
+  warm:
+    medium: ssd_cache
+    criteria: {importance_gte: 0.4}
+  cold:
+    medium: disk
+    criteria: {}
+  status: proposed            # §19 #7 — 승강 기준은 실험으로 확정
+  note: "v1은 정책만 검증하고 실제 매체를 구현하지 않는다 (§11.3)"
+
+# ---------------------------------------------------------------- 생성기 (§7.11, §19 #17)
+generator:
+  backend: ollama
+  model: "qwen3:8b"
+  digest: null                # Phase 9 실측
+  temperature: null           # Phase 9 실측 확정. 임의로 넣지 않는다
+  language: "ko"
+  prompt_version: "prompt_v1"
+  status: proposed
+
+# ---------------------------------------------------------------- ANN (§11.3, §19 #6)
+ann:
+  backend: brute_force        # brute_force | hnsw
+  hnsw_library: null          # faiss | hnswlib — §19 #6 미정
+  status: proposed
+
+# ---------------------------------------------------------------- seeds (§18.1.1)
+seeds:
+  # 기본 시드를 하드코딩하지 않는다. 모든 난수 지점이 명시적 시드를 받는다.
+  default_global: null        # 실행 시 주입
+  dataset_splits: null        # 데이터셋별 분할 시드
+
+# ---------------------------------------------------------------- 시간 (§18.1.1)
+time:
+  timezone: "UTC"
+  timestamp_format: "%Y-%m-%dT%H:%M:%SZ"

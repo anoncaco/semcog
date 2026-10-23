@@ -1,0 +1,72 @@
+# attributes — 속성 표현 정규화 규칙 (v0.1)
+#
+# 기준: summary_arch.md §7.3 (속성 표현 노이즈 제거), §8.10 ConceptNode (ADR-0004, ADR-0008)
+# 규칙:
+#   - 코드 하드코딩 금지. 정규화 규칙은 이 파일에 선언한다.
+#   - 이 규칙이 §10.2 대표 예시의 반증 관계 성립 전제다:
+#       "동물 A의 귀가 뾰족하다" → "뾰족한 귀"
+#       "개도 뾰족한 귀를 가질 수 있다" → "뾰족한 귀"
+#     둘이 **같은 canonical_label**이 되어야 같은 ConceptNode가 된다.
+#   - 적용된 규칙은 ConceptNode.resolution_method에 기록한다.
+#
+# §7.5.1 개발자 직접 등록 경로: version bump + 회귀 green + ADR
+
+version: "0.1.0"
+status: proposed
+
+# 정규화 시도 순서 (§8.10)
+resolution_order:
+  - literal_normalized_match   # 정규화된 문자열이 같으면 동일 노드
+  - alias_table                # 이 파일의 alias 규칙
+  - unresolved                 # 못 찾으면 unresolved로 남긴다. 자동 병합하지 않는다.
+
+# ---------------------------------------------------------------- 별칭 규칙
+# pattern → canonical_label
+# 정규화는 Unicode NFC + 공백 정리를 먼저 적용한 문자열에 매칭한다.
+aliases:
+  # --- §10.2 대표 예시 ---
+  - id: attr_001
+    pattern: "귀가 뾰족하다"
+    canonical_label: "뾰족한 귀"
+    node_type: attribute
+    notes: "§10.2 입력1. §7.3 표 하단 '속성 표현 노이즈 제거' 예시"
+    status: confirmed
+
+  - id: attr_002
+    pattern: "뾰족한 귀"
+    canonical_label: "뾰족한 귀"
+    node_type: attribute
+    notes: "§10.2 입력2. 이미 정규화된 형태"
+    status: confirmed
+
+  # --- 추가 규칙은 Phase 3에서 72문장 측정 결과에 따라 추가한다 ---
+  # - id: attr_00X
+  #   pattern: "..."
+  #   canonical_label: "..."
+  #   node_type: attribute
+  #   notes: "어느 문장 세트에서 발견되었는가"
+
+# ---------------------------------------------------------------- 정규형
+# 형용사 서술("B가 C하다") → 속성구("C한 B") 형태의 변환 규칙.
+# 이 변환만으로는 "뾰족한 귀"를 만들 수 없으므로 alias 규칙이 반드시 필요하다.
+surface_transforms:
+  - id: tf_001
+    from: "{noun}이 {adj}하다"
+    to: "{adj}한 {noun}"
+    notes: "형용사 서술 → 속성구. 명사·형용사 사전은 alias 규칙으로 보완한다"
+    status: proposed
+
+# ---------------------------------------------------------------- 노드 타입 결정 (§8.10, ADR-0008)
+# node_type은 표면형이 아니라 **관계에서의 위치**로 결정한다.
+# 이 파일은 그 위에 얹이는 선택적 사전이다. 사전이 있으면 관계 위치 규칙보다 우선한다.
+node_type_by_position:
+  has_property.attribute: attribute
+  has_property.subject: entity
+  is_a.object: class
+  is_a.subject: entity
+  default: entity
+
+# 애매할 때의 기본값과 신뢰도
+fallback:
+  node_type: entity
+  resolution_confidence: low     # 추측을 high로 표시하지 않는다

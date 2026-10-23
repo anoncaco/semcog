@@ -1,0 +1,96 @@
+# goal_rules — 목표 분류 규칙 (v0.1)
+#
+# 기준: summary_arch.md §7.5 (목표 분류), §10.1 (인지 루프 1스텝)
+# 규칙:
+#   - 분류기는 **규칙 기반**이다. LLM을 사용하지 않는다 (§7.3과 동일 이유).
+#   - 코드 하드코딩 금지.
+#   - 명시적 목표가 자동 분류보다 우선한다. 자동 분류는 '추정'이며 goal_source=inferred로 기록한다.
+#   - 분류 실패 시 unknown → **결정적 기본 정책**. 사용자에게 되묻지 않는다.
+#     (사용자 질의는 §10.1 DECIDE의 needs_observation 경로와 다른 축이다. §7.5 v1.3)
+#
+# §7.5.1 개발자 직접 등록 경로: version bump + 회귀 green + ADR
+
+version: "0.1.0"
+status: proposed
+
+goal_types:
+  - id: fact_query
+    description: "X는 Y인가?"
+    policy: [symbolic_lookup, deduction]
+    examples:
+      - "고양이는 포유류인가?"
+      - "서울은 한국에 있는가?"
+
+  - id: feature_identification
+    description: "이 특징을 가진 대상은?"
+    policy: [hypothesis_generate, hypothesis_compare, distinctiveness_check]
+    examples:
+      - "이 특징의 동물은?"
+      - "동물 A는 무엇인가?"
+    notes: "§10.2 대표 예시가 이 타입에 해당한다"
+
+  - id: relation_query
+    description: "A와 B의 관계는?"
+    policy: [symbolic_lookup, relation_expansion]
+    examples:
+      - "고양이와 개의 관계는?"
+      - "A와 B는 어떤 관계인가?"
+
+  - id: generalization
+    description: "여러 사례에서 공통된 것은?"
+    policy: [induction_common_relation]
+    examples:
+      - "이 세 사례의 공통점은?"
+    notes: "결과는 규칙 후보이며, 검증 전 일반 사실로 승격되지 않는다 (§10.4)"
+
+  - id: unknown
+    description: "분류 불가"
+    policy: [symbolic_lookup, deduction, return_insufficient_evidence]
+    examples: []
+    notes: "억지 분류를 하지 않는다"
+
+# ---------------------------------------------------------------- 분류 규칙
+# priority가 낮을수록 먼저 평가한다. 먼저 매칭되는 것만 적용한다.
+rules:
+  - id: gr_001
+    goal_type: feature_identification
+    priority: 10
+    match:
+      any_keywords: ["무엇인가", "무엇일까", "종류", "이름은", "추측"]
+      ends_with: ["인가", "일까"]
+    notes: "§10.2 예시. '무엇' 계열 우선"
+
+  - id: gr_002
+    goal_type: relation_query
+    priority: 20
+    match:
+      any_keywords: ["관계", "관계는", "연관", "차이"]
+
+  - id: gr_003
+    goal_type: generalization
+    priority: 30
+    match:
+      any_keywords: ["공통", "일반적", "공통점", "패턴", "규칙"]
+
+  - id: gr_004
+    goal_type: fact_query
+    priority: 40
+    match:
+      any_keywords: ["인가", "맞는가", "맞나", "참인가", "거짓인가"]
+
+# ---------------------------------------------------------------- fallback
+fallback:
+  goal_type: unknown
+  goal_source: inferred
+  deterministic_policy:
+    - symbolic_lookup
+    - deduction
+    - return_insufficient_evidence
+  notes: "사용자 질의가 아니라 결정적 기본 정책. §7.5 v1.3"
+
+# ---------------------------------------------------------------- 우선순위 규칙
+priority_rules:
+  explicit_goal_wins: true
+  notes: "사용자가 목표를 명시적으로 준 경우 그 목표가 current_goal이 된다. goal_source=explicit"
+
+goal_source_values: [explicit, inferred]

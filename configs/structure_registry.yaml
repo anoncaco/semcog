@@ -1,0 +1,219 @@
+# structure_registry — 구조 버전·전이 표·검증 우선순위 (v0.1)
+#
+# 기준: summary_arch.md §7.5 (전이 표), §7.7 (연산), §7.8 (판정 순서), §7.5.1 (개발자 경로)
+# 규칙:
+#   - 전이 표와 연산 목록은 **선언적**이다. 코드 하드코딩 금지.
+#   - 표에 없는 전이는 **거부**되고 TransitionRejected로 기록된다.
+#   - 이 파일을 바꾸면 §7.5.1 게이트 4조건을 통과해야 한다:
+#     버전 bump + 회귀 green + ADR 기록 + STATE.structure_version / InferenceTrace.rule_version 전파
+#
+# §7.5.1 개발자 직접 등록 경로: version bump + 회귀 green + ADR
+
+version: "0.2.0"
+structure_version: "structure_v0.2.0"
+status: proposed
+
+# ---------------------------------------------------------------- 가설 상태 전이 (§7.5)
+# from → to : 허용 여부
+#
+# 사유 규칙 (summary_arch.md §7.5 v1.4):
+#   - **전역 규칙이 우선한다.** 모든 전이는 reason이 비어 있으면 거부된다.
+#   - 개별 규칙은 전역을 *완화*할 수 없고 *강화*만 한다.
+#   - 개별 규칙이 표현하는 것은 사유의 "존재 여부"가 아니라 "내용 종류"다.
+#   - reason_kinds: 사유가 명시해야 하는 내용 종류. rejected에서 되돌아오는 전이에 적용된다.
+#     - existing_evidence_retracted : 기존 근거 철회
+#     - new_evidence_added          : 신규 근거 발생
+#   - "재검토 시에만"은 reason_kinds 충족으로 판정한다 (인정 조건은 §19 #25 미결).
+#
+# "rejected"에서 되돌아오는 전이는 reason(사유) 필수.
+hypothesis_transitions:
+  candidate:
+    supported:    { allowed: true }
+    weakened:     { allowed: true }
+    unresolved:   { allowed: true }
+    rejected:     { allowed: true }
+    candidate:    { allowed: false }
+  supported:
+    weakened:     { allowed: true }
+    unresolved:   { allowed: true }
+    rejected:     { allowed: false, note: "supported → rejected 직행 금지. weakened 또는 unresolved를 거친다" }
+    supported:    { allowed: false }
+    candidate:    { allowed: false }
+  weakened:
+    supported:    { allowed: true }
+    unresolved:   { allowed: true }
+    rejected:     { allowed: true }
+    weakened:     { allowed: false }
+    candidate:    { allowed: false }
+  unresolved:
+    supported:    { allowed: true }
+    weakened:     { allowed: true }
+    rejected:     { allowed: true }
+    unresolved:   { allowed: false }
+    candidate:    { allowed: false }
+  rejected:
+    weakened:     { allowed: true, reason_kinds: [existing_evidence_retracted, new_evidence_added], note: "사유 필수" }
+    unresolved:   { allowed: true, reason_kinds: [existing_evidence_retracted, new_evidence_added], note: "사유 필수" }
+    supported:    { allowed: true, reason_kinds: [existing_evidence_retracted, new_evidence_added], note: "사유 필수" }
+    rejected:     { allowed: false }
+    candidate:    { allowed: false }
+
+# ---------------------------------------------------------------- 전역 사유 규칙 (§7.5)
+# 모든 전이는 reason이 비어 있으면 거부된다 (전역 규칙). 개별 규칙은 이것을 완화하지 못한다.
+global_transition_rules:
+  require_reason: true
+  reject_event: TransitionRejected
+  on_reject: state_unchanged
+
+# ---------------------------------------------------------------- 검증 상태 (§7.8)
+verification_statuses:
+  - supported
+  - counterevidence_found
+  - contradiction
+  - insufficient_evidence
+  - scope_mismatch
+  - needs_observation
+  - invalid_inference
+
+# 판정 순서 — 먼저 확정된 상태를 결과로 삼는다 (summary_arch.md §7.8 v1.3)
+verification_precedence:
+  - order: 1
+    status: invalid_inference
+    condition: "근거 관계·전제의 유효성 실패"
+  - order: 2
+    status: scope_mismatch
+    condition: "근거와 주장의 범위 불일치"
+  - order: 3
+    status: contradiction
+    condition: "같은 범위·조건에서 양립 불가 확인"
+  - order: 4
+    status: supported
+    condition: "지지 근거 존재"
+  - order: 5
+    status: counterevidence_found
+    condition: "반대 근거 존재"
+  - order: 6
+    status: insufficient_evidence
+    condition: "어느 쪽도 아님"
+  - order: 7
+    status: needs_observation
+    condition: "추가 관찰이 실질적으로 도움 (1~6이 모두 미확정일 때만 단독)"
+
+# confidence는 범주형만 (C7). 숫자 확률은 calibration 데이터셋이 생긴 뒤에만.
+confidence_levels: [low, medium, high, unresolved]
+confidence_method: ordinal_v1
+
+# Evidence.direction 파생 규칙 (§7.8) — counters 경로는 2개뿐
+evidence_direction_derivation:
+  supports: supports
+  contradicts: counters
+  default: neutral
+counter_paths:
+  - id: cp_001
+    condition: "근거 관계의 술어가 'contradicts'"
+  - id: cp_002
+    condition: "distinctiveness 판정 결과가 V에 의해 반증으로 승격"
+notes: "이 두 경로 외에 counters를 만드는 코드는 존재하지 않아야 한다 (회귀 테스트로 검사)"
+
+# ---------------------------------------------------------------- 추론 연산 (§7.7)
+# 연산 추가 = 구조 변경 (§7.5.1 개발자 경로 또는 Phase 12 이후 META 경로)
+operators:
+  - id: deduction.is_a_transitivity.v1
+    role: "A is_a B, B is_a C ⇒ A is_a C"
+    phase: 6
+    implementation_status: declared_only   # 1차 목표 범위 밖 (선언만)
+    preconditions: ["both premises are is_a with polarity=positive"]
+    version: "1.0.0"
+
+  - id: deduction.instance_class.v1
+    role: "인스턴스가 분류의 속성을 상속"
+    phase: 6
+    implementation_status: declared_only
+    version: "1.0.0"
+
+  - id: hypothesis.generate_from_feature.v1
+    role: "관찰 속성 + 관련 후보 주어로 가설 후보 생성"
+    phase: 6
+    implementation_status: planned
+    preconditions: ["attribute node resolved"]
+    version: "1.0.0"
+
+  - id: hypothesis.compare_evidence.v1
+    role: "각 가설에 지지·반박 근거 연결"
+    phase: 6
+    implementation_status: planned
+    version: "1.0.0"
+
+  - id: attribute.distinctiveness_check.v1
+    role: "속성이 특정 분류에 고유한지 검사 (반증 가능성 판정)"
+    phase: 6
+    implementation_status: planned
+    preconditions: ["attribute node resolved"]
+    requires_scope: true          # distinctive 판정에는 scope가 필수 (ADR-0003)
+    version: "1.0.0"
+
+  - id: induction.common_relation.v1
+    role: "여러 독립 사례의 공통 관계를 규칙 후보로 제안"
+    phase: 11
+    implementation_status: declared_only
+    version: "1.0.0"
+
+  - id: analogy.graph_match.v1
+    role: "두 관계 그래프의 대응 구조 후보"
+    phase: 11
+    implementation_status: declared_only
+    version: "1.0.0"
+
+# 연구 백로그 — Phase 배정하지 않는다 (§7.7)
+research_backlog:
+  - causal.what_if.v1
+  - planning.subgoal.v1
+
+# ---------------------------------------------------------------- 이벤트
+# Phase 4 = 인프라 + 기억 이벤트 / Phase 5 = 상태 전이 이벤트 (ADR-0006)
+event_types:
+  memory_phase:                     # Phase 4
+    - ContextAdded
+    - RelationExtracted
+    - RetrievalPerformed
+    - SearchResultUsed
+    - SearchResultIgnored
+    - EncoderFailed
+    - ParseFailed
+    - RetrievalFailed
+  state_phase:                      # Phase 5
+    - EvidenceLinked
+    - HypothesisCreated
+    - HypothesisWeakened
+    - HypothesisRejected
+    - InferenceDerived
+    - ContradictionDetected
+    - ObservationRequested
+    - RelationRetracted
+    - EvidenceRetracted
+    - NodeMerged
+    - NodeRetracted
+    - FailureRecorded
+    - StateSaved
+    - SessionStarted
+    - SessionResumed
+    - SessionEnded
+    - TransitionRejected
+  structure_phase:
+    - StructureChangeProposed
+    - StructureVersionActivated
+  output_phase:
+    - OutputGenerated
+  loop_phase:                       # Phase 8
+    - StepTerminated
+
+event_schema_fields:
+  - event_id
+  - event_type
+  - session_id
+  - step
+  - actor
+  - subject_ids
+  - reason
+  - payload
+  - created_at

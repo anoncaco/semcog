@@ -1,0 +1,22 @@
+# requirements.txt — Phase 0 venv에서 설치한 의존성의 정확한 기록
+#
+# 규칙 (§18.1):
+#   - venv pip로만 설치한다. sudo 금지.
+#   - 전역 설정 변경 금지.
+#   - 이 파일은 "실제 설치된 버전"의 기록이다. §18.1 "의존성 기록" 요구사항.
+#
+# 상태: Phase 0 착수 전. 아래는 계획 목록이며, 설치 후 실제 버전으로 교체한다.
+
+# --- 실행 필수 ---
+pyyaml>=6.0
+
+# --- 임베더 (Phase 0에서 실측 후 확정) ---
+# torch>=2.5              # float16 비호환. bfloat16/float32만 사용 (embedder_reference §3)
+# sentence-transformers>=3.0
+# transformers>=4.45
+
+# --- 테스트 (Phase 0) ---
+# pytest>=8.0
+
+# --- 선택 (Phase 3 착수 전에 정규식만으로 §7.3의 9개 문형을 처리할 수 없을 때만 추가, §19 #14) ---
+# kiwipiepy>=0.20

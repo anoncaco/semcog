@@ -1,0 +1,83 @@
+# data_manifest — 데이터셋 버전·생성 절차·검수 기록
+#
+# 기준: summary_arch.md §15.1.1, §18.2, ADR-0007
+# 규칙:
+#   - 검수되지 않은 라벨은 **gold가 아니다.** reviewed_by가 비면 gold가 아니다.
+#   - 파일이 바뀌면 sha256과 version을 갱신한다.
+#   - 생성 절차를 기록한다. "자동 생성"은 gold 라벨에 대해 금지다(§7.3).
+
+version: "0.1.0"
+
+datasets:
+  - id: parsing_dev
+    path: tests/fixtures/parsing/parsing_dev.jsonl
+    version: "0.1.0"
+    created_at: null
+    created_by: null
+    reviewed_by: []
+    generation_method: manual_draft_then_human_review
+    sha256: null
+    cluster_count: null
+    size:
+      base: 27
+      adversarial: 15
+      out_of_scope: 10
+      total: 52
+    splits:
+      - name: dev
+        count: 52
+    notes: "§10.2 대표 예시 2문장을 반드시 포함한다"
+
+  - id: parsing_holdout
+    path: tests/fixtures/parsing/parsing_holdout.jsonl
+    version: "0.1.0"
+    created_at: null
+    created_by: null
+    reviewed_by: []
+    generation_method: manual_draft_then_human_review
+    sha256: null
+    cluster_count: null
+    size:
+      total: 20
+    splits:
+      - name: holdout
+        count: 20
+    notes: "규칙에 노출 금지. §15.5 일반화 + Phase 10 전용"
+
+  - id: retrieval_pairs
+    path: tests/fixtures/retrieval/retrieval_pairs.jsonl
+    version: "0.1.0"
+    created_at: null
+    created_by: null
+    reviewed_by: []
+    generation_method: manual_draft_then_human_review
+    sha256: null
+    size:
+      total: 100
+    splits:
+      - name: all
+        count: 100
+    notes: "counter_context_ids에 반대 방향 근거를 명시해 §7.6 게이트를 검증"
+
+  - id: e2e_case_10_2
+    path: tests/fixtures/e2e/case_10_2/
+    version: "0.1.0"
+    created_at: null
+    created_by: null
+    reviewed_by: []
+    generation_method: manual
+    size:
+      seed_contexts: 3
+    notes: "summary_arch.md §10.2 대표 예시. 기대 결과 단언 포함"
+
+# 아직 규모가 정해지지 않은 데이터셋 (§19 #18, #23 등)
+pending:
+  - id: evidence_linking
+    phase: 7
+    notes: "Phase 7 착수 전에 규모 확정"
+  - id: generalization_*
+    phase: 10
+  - id: image_eval
+    phase: 14
+  - id: ablation_*
+    phase: 10

@@ -1,0 +1,123 @@
+# embeddings / profiles — v0.1 (Phase 0에서 실측 확정)
+#
+# 규칙 (§6.3):
+#   - digest / dimension / normalize / created_at은 **Phase 0 실측값**으로 채운다.
+#   - 768-d를 가정하지 않는다. 임베더 출력 차원은 실측값이다.
+#   - float16 금지. bfloat16은 백엔드가 실제 지원할 때만.
+#   - 같은 profile_id에 서로 다른 model/digest가 섞이면 오류 (§6.2 규칙 5).
+#
+# 규칙: task prefix는 **텍스트 입력에만** 적용한다. 이미지·오디오·비디오에는 적용하지 않는다.
+
+version: "0.1.0"
+
+profiles:
+  - id: text_sim_v1
+    backend: sentence_transformers
+    model_id: google/embeddinggemma-2
+    tag: null
+    digest: null          # Phase 0 실측
+    dimension: null       # Phase 0 실측
+    normalize: null       # Phase 0 실측 (노름 검사로 확인)
+    task_prefix: "task: sentence similarity | query: "
+    modality: [text]
+    encoder_flags:
+      vision_config: null
+      audio_config: null
+    dtype: null           # bfloat16 | float32 — Phase 0에서 지원 여부 실측 후 확정
+    created_at: null      # Phase 0 실측
+    status: unverified    # unverified | verified
+
+  - id: context_retrieval_v1
+    backend: sentence_transformers
+    model_id: google/embeddinggemma-2
+    tag: null
+    digest: null
+    dimension: null
+    normalize: null
+    task_prefix: "task: search result | query: "   # 질의측
+    document_prefix: "title: none | text: "        # 저장측
+    modality: [text]
+    encoder_flags:
+      vision_config: null
+      audio_config: null
+    dtype: null
+    created_at: null
+    status: unverified
+
+  - id: context_similarity_v1
+    backend: sentence_transformers
+    model_id: google/embeddinggemma-2
+    tag: null
+    digest: null
+    dimension: null
+    normalize: null
+    task_prefix: "task: sentence similarity | query: "   # 대칭
+    modality: [text]
+    encoder_flags:
+      vision_config: null
+      audio_config: null
+    dtype: null
+    created_at: null
+    status: unverified
+
+  - id: fact_evidence_v1
+    backend: sentence_transformers
+    model_id: google/embeddinggemma-2
+    tag: null
+    digest: null
+    dimension: null
+    normalize: null
+    task_prefix: "task: fact checking | query: "
+    document_prefix: "title: none | text: "
+    modality: [text]
+    encoder_flags:
+      vision_config: null
+      audio_config: null
+    dtype: null
+    created_at: null
+    status: unverified
+
+# --- MRL 절단 프로파일 (v1.3): z_raw와 **같은 인덱스에서 섞지 않는다** (§6.1) ---
+  - id: context_retrieval_v1_mrl256
+    backend: sentence_transformers
+    model_id: google/embeddinggemma-2
+    tag: null
+    digest: null
+    dimension: 256        # truncate_dim + normalize_embeddings=True (재정규화 필수)
+    normalize: true
+    task_prefix: "task: search result | query: "
+    document_prefix: "title: none | text: "
+    modality: [text]
+    encoder_flags:
+      vision_config: null
+      audio_config: null
+    dtype: null
+    created_at: null
+    status: unverified
+
+# --- Ollama 백엔드 (Phase 0에서 모델 동일성 판정 후 확정, ADR-0002) ---
+# - 로컬 태그는 `embeddinggemma`이며 ST 대상(`google/embeddinggemma-2`)과 표기가 다르다.
+# - 동일성 판정 결과가 false/undetermined이면 **반드시 별도 프로파일 + 별도 인덱스**다.
+# - 판정 전까지 프로필을 만들지 않는다. 임의로 채우지 않는다.
+#
+# - id: ollama_embedding_v1
+#   backend: ollama
+#   model_id: embeddinggemma
+#   tag: embeddinggemma
+#   digest: null          # 확인 불가일 수 있다. 임의 문자열로 대체하지 않는다 (§19 #2)
+#   dimension: null
+#   normalize: null
+#   task_prefix: null     # Ollama는 prefix를 별도 지정하지 않는다
+#   modality: [text]
+#   encoder_flags: {}
+#   dtype: null
+#   created_at: null
+#   status: unverified
+
+# --- 4단 표현 체계 (§6.1) ---
+# z_raw : 위 프로파일들의 원본 벡터. 기본 검색 경로.
+# z_mrl : *_mrl256 프로파일. 저비용 검색 비교 기준선.
+# z_abs : 학습형 추상 표현. **승격 검증 전 비활성.** Phase 13에서 생성.
+# z_joint: concat(normalize(z_raw), normalize(z_abs)). Phase 13 실험 전용.
+#
+# z_mrl과 z_abs는 **같은 필드·같은 인덱스에 섞지 않는다.** (§6.1, §6.2 규칙 4)
